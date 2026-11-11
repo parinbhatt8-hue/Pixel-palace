@@ -1,0 +1,6 @@
+{
+  "appId": "com.pixelpalace.murder",
+  "appName": "Pixel Palace Murder",
+  "webDir": "www",
+  "android": { "backgroundColor": "#120a26" }
+}

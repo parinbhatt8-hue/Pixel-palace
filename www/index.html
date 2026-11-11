@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>window.AI_ENDPOINT="";/* optional: URL of your AI proxy so suspects and the AI levels work in the APK */</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pixel Palace Murder</title>
+<style>@font-face{font-family:"Press Start 2P";src:url(font.woff2) format("woff2");font-display:swap}</style>
+<style>
+:root{--bg:#120a26;--panel:#1f1244;--ink:#f3e9d2;--mag:#ff3ea5;--cyan:#2de2e6;--amb:#ffb000;--dim:#9a8cc4;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#120a26;--panel:#1f1244;--ink:#f3e9d2}}
+:root[data-theme="dark"]{--bg:#120a26;--panel:#1f1244;--ink:#f3e9d2}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:10px/1.8 "Press Start 2P",ui-monospace,Menlo,monospace;
+background-image:radial-gradient(#2a1a52 1px,transparent 1px);background-size:8px 8px}
+#app{max-width:420px;margin:0 auto;padding:12px}
+h1{font-size:12px;margin:4px 0 8px;color:var(--mag);text-shadow:2px 2px 0 #000;letter-spacing:1px}
+#hud{display:flex;justify-content:space-between;align-items:center;color:var(--amb);margin-bottom:8px}
+#mu{padding:4px 6px;font-size:8px;box-shadow:2px 2px 0 #000}
+.box{border:3px solid var(--ink);background:var(--panel);box-shadow:4px 4px 0 var(--mag)}
+.crt{position:relative;line-height:0}
+.crt::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px)}
+canvas{width:100%;image-rendering:pixelated;display:block;touch-action:none}
+#msg{min-height:92px;padding:10px;margin:12px 0;line-height:1.7}
+#pad{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+#dp{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:2px}
+button{font:inherit;color:var(--ink);background:var(--panel);border:3px solid var(--ink);padding:10px;cursor:pointer;box-shadow:3px 3px 0 #000;touch-action:manipulation}
+button:active{transform:translate(3px,3px);box-shadow:none}
+button:focus-visible,input:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+#dp button{padding:0;font-size:14px}
+.ab{display:flex;flex-direction:column;gap:12px}
+.ab button{background:var(--cyan);color:#120a26;border-color:#120a26}
+.ab button.r{background:var(--mag);color:#fff}
+#ov{position:fixed;inset:0;background:rgba(10,5,24,.94);overflow:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 14px calc(16px + env(safe-area-inset-bottom,0px))}
+#ov[hidden]{display:none}
+#ovi{max-width:420px;margin:0 auto;padding:14px}
+#ovi h2{font-size:12px;color:var(--amb);margin:0 0 10px}
+#ovi button{display:block;width:100%;margin:8px 0;text-align:left;line-height:1.5}
+#ovi button.on{background:var(--mag);border-color:var(--amb)}
+#ovi .x{background:var(--cyan);color:#120a26;text-align:center}
+.log{max-height:36vh;overflow:auto;margin:8px 0;padding:8px;border:3px dashed var(--dim);line-height:1.7}
+.you{color:var(--cyan)}.them{color:var(--ink)}
+input{width:100%;font:inherit;padding:10px;background:#000;color:var(--ink);border:3px solid var(--ink)}
+.dim{color:var(--dim)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+<h1>PIXEL PALACE MURDER</h1>
+<div id="hud"><span id="cl">CLUES 0/5</span><span id="sc">SCORE 0</span><button id="mu" aria-label="Toggle sound">SND ON</button></div>
+<div class="box crt"><canvas id="cv" width="160" height="128"></canvas></div>
+<div id="msg" class="box"></div>
+<div id="pad">
+<div id="dp">
+<span></span><button data-d="0,-1" aria-label="Up">▲</button><span></span>
+<button data-d="-1,0" aria-label="Left">◀</button><span></span><button data-d="1,0" aria-label="Right">▶</button>
+<span></span><button data-d="0,1" aria-label="Down">▼</button><span></span>
+</div>
+<div class="ab"><button id="bn">NOTES</button><button id="ba" class="r">ACCUSE</button></div>
+</div>
+</div>
+<div id="ov"><div id="ovi" class="box"></div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const cv=$('#cv'),g=cv.getContext('2d');g.imageSmoothingEnabled=false;
+let S={
+mia:{n:'Mia Chen',c:'#2de2e6',x:2,y:5,role:'Night mechanic',
+facts:'You repair cabinets. You were fixing cabinet #3 until 11:45pm and your repair log proves it. Dex underpaid you but you liked him. You secretly took a few tokens from the coin box: admit this ONLY if shown the coin-box key. You heard the back door bang around 11:30pm and saw nobody.',
+alibi:'I was fixing cabinet #3 all night. Check my log!',dex:'Dex was fair, mostly. Poor guy.',
+hit:{log:'See? Signed off at 11:45. I couldn’t have done it.',key:'...Fine. I borrowed a few tokens. That’s ALL I took!',print:'The back door banged around 11:30. Wasn’t me.'}},
+rex:{n:'Rex Vandal',c:'#ff3ea5',x:7,y:6,role:'Rival arcade owner',
+facts:'You wanted to buy the arcade and Dex refused. You claim you left at 10pm and went home. TRUTH: you came back at 11:20 through the back door and killed Dex in anger. NEVER confess to the murder. Admit being there late ONLY if shown the wet bootprints. Admit the offer ONLY if shown the torn offer, and call it just business. You are smug.',
+alibi:'Left at ten sharp. Ask anyone.',dex:'Stubborn old man. Bad for business.',
+hit:{print:'...Okay, I swung by late. He was already down when I looked in!',letter:'Just business. Offers aren’t crimes.'}},
+juno:{n:'Juno Park',c:'#ffb000',x:8,y:3,role:'Champion player',
+facts:'You believe Dex rigged the scoreboard and cost you the championship. You claim you were home streaming. TRUTH: you came back at 11:00, argued with Dex, and left by the front door at 11:15 while he was alive. Admit this ONLY if shown the score card. You are angry but did not kill him.',
+alibi:'Home all night. Streaming.',dex:'He rigged the scoreboard!',
+hit:{card:'Okay, I came back at eleven. We argued. He was ALIVE when I left.',letter:'Not mine. Ask Rex.'}}};
+let C={
+print:{n:'Wet bootprints',x:5,y:6,d:'Muddy prints from the back door. Rain began at 11pm, so someone came in AFTER 11.'},
+letter:{n:'Torn offer',x:3,y:3,d:'A crumpled "final offer" to buy the arcade, signed R. Vandal. Dex scrawled NEVER across it.'},
+log:{n:'Repair log',x:1,y:4,d:'Mia’s log. Cabinet #3 repair signed off at 11:45pm.'},
+key:{n:'Coin-box key',x:6,y:4,d:'A small key under a cabinet. It opens the coin box.'},
+card:{n:'Score card',x:1,y:2,d:'Juno’s high-score card, stamped at 11:00pm. She was here late.'}};
+let found={},H={},CASE=null;const P={x:5,y:5};
+const DEF={title:'Pixel Palace Murder',intro:'Midnight. Dex Harlow, owner of Pixel Palace Arcade, lies dead by the Galactic Gold cabinet. Three people were here tonight.',body:'Dex Harlow, owner of the arcade. A bent joystick lies beside him. Time of death: about 11:30pm.',killer:'rex',proof:['print','letter'],win:'Rex cracks. The wet bootprints put him at the back door after the rain began, and the torn offer shows his motive. Great detective work!',lose:'Rex Vandal slips out the back door into the rain. Case unsolved.'};
+const DS=JSON.parse(JSON.stringify(S)),DC=JSON.parse(JSON.stringify(C));
+const SP=[[2,5],[7,6],[8,3]],CP=[[5,6],[3,3],[1,4],[6,4],[1,2]],SCL=['#2de2e6','#ff3ea5','#ffb000'];
+let FL=['#2a1a52','#331f63'],EX=[],LV=0;const LAY=[[],[[3,4],[6,3],[4,6]],[[2,2],[7,2],[4,4],[6,5]]];
+function maxScore(){let h=0;for(const k in S)h+=Object.keys(S[k].hit).length;return h*50+1300}
+function useCase(o){S=o.S;C=o.C;CASE=o.meta;FL=CASE.floor||['#2a1a52','#331f63'];EX.forEach(([x,y])=>SOL.delete(x+','+y));EX=LAY[CASE.layout||0];EX.forEach(([x,y])=>SOL.add(x+','+y));found={};H={};rev.clear();acc.s=null;acc.ev.clear();score=0;P.x=5;P.y=5;$('#sc').textContent='SCORE 0';$('#cl').textContent='CLUES 0/5';draw()}
+function build(j){const cl=(s,n=220)=>String(s||'').replace(/[<>]/g,'').slice(0,n),ids=['a','b','c'],cids=['c0','c1','c2','c3','c4'];
+if(!j||!j.suspects||j.suspects.length!=3||!j.clues||j.clues.length!=5)throw 0;
+const k=+j.killer,p=(j.proof||[]).map(Number);
+if(!(k>=0&&k<3)||p.length!=2||p[0]==p[1]||p.some(i=>!(i>=0&&i<5)))throw 0;
+const s={},c={};
+j.suspects.forEach((u,i)=>{const hit={};for(const q in u.hit||{})if(cids[+q])hit[cids[+q]]=cl(u.hit[q]);
+s[ids[i]]={n:cl(u.name,24).replace(/[^\w .'’-]/g,'')||'Suspect '+(i+1),c:SCL[i],x:SP[i][0],y:SP[i][1],role:cl(u.role,40),facts:cl(u.facts,700),alibi:cl(u.alibi),dex:cl(u.dex),hit}});
+j.clues.forEach((u,i)=>{c[cids[i]]={n:cl(u.name,24),x:CP[i][0],y:CP[i][1],d:cl(u.desc)}});
+return{S:s,C:c,meta:{floor:Array.isArray(j.floor)&&j.floor.length==2&&j.floor.every(h=>/^#[0-9a-f]{6}$/i.test(h))?j.floor:null,layout:[0,1,2].includes(+j.layout)?+j.layout:0,title:cl(j.title,30)||'New Case',intro:cl(j.intro,300),body:cl(j.body,300),killer:ids[k],proof:p.map(i=>cids[i]),win:cl(j.win,300),lose:cl(j.lose,200)}}}
+async function generate(lv){
+const pr=`Create a short murder mystery set in Pixel Palace Arcade, a retro arcade. You choose the occasion and theme yourself: be creative and different each time. This is level ${lv} of a series that gets harder: level 1 is easy, later levels have more red herrings, subtler clues, and killers with stronger fake alibis. Reply with ONLY JSON, no markdown, shaped exactly like {"title":"","floor":["#2a1a52","#331f63"],"layout":0,"intro":"2 sentences","body":"2 sentences about the victim and the scene","killer":0,"proof":[0,1],"win":"2 sentences on how the killer is exposed","lose":"1 sentence, the killer escapes","suspects":[{"name":"","role":"","alibi":"what they claim","dex":"short opinion of the victim","facts":"secret sheet: the truth about the night, what they hide, and which clue (by NAME) makes them admit it","hit":{"0":"line said when shown clue 0"}}],"clues":[{"name":"2-3 words","desc":"1-2 sentences"}]}. Rules: exactly 3 suspects and 5 clues, clues indexed 0-4. killer is a suspect index 0-2. proof is two clue indexes: one placing the killer at the scene and one giving the killer a motive; both must clearly implicate the killer. Each innocent suspect has a clue that proves their alibi or exposes a smaller secret. The killer lies and never confesses to the murder. Give hit lines for every clue that matters to that suspect. floor is two DARK hex colors that suit your theme, and layout is 0, 1, or 2 (how much furniture fills the room). Keep every string short and names unique.`;
+let t;if(sample){t=(await sample(pr,{cache:false})).text}else{const rs=await fetch(window.AI_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:pr})});t=(await rs.json()).text}
+return build(JSON.parse(t.slice(t.indexOf('{'),t.lastIndexOf('}')+1)))}
+function start(){const o=openOv('<h2></h2><p></p><p class="dim">Walk onto sparkles to find clues. Walk into people to question them. Then accuse the killer.</p>');
+o.children[0].textContent=CASE.title+(CASE!==DEF?'  (LV '+LV+')':'');o.children[1].textContent=CASE.intro;
+o.append(btn('START CASE',()=>{T0=Date.now();ac();music();closeOv();say('The arcade hums in the dark. Start by searching the floor.')},'x'));
+if(sample||window.AI_ENDPOINT){
+const b=btn('PLAY AI LEVEL '+(LV+1),async()=>{if(busy)return;busy=true;b.textContent='GENERATING A CASE...';try{let r;try{r=await generate(LV+1)}catch(e){r=await generate(LV+1)}useCase(r);LV++;busy=false;start()}catch(e){busy=false;b.textContent='FAILED. TAP TO TRY AGAIN'}});o.append(b)}
+if(CASE!==DEF)o.append(btn('CLASSIC CASE',()=>{useCase({meta:DEF,S:DS,C:DC});start()}))}
+const SOL=new Set();
+for(let x=0;x<10;x++){SOL.add(x+',0');SOL.add(x+',7')}
+for(let y=0;y<8;y++){SOL.add('0,'+y);SOL.add('9,'+y)}
+for(let x=1;x<=8;x++)SOL.add(x+',1');
+let blink=0,sample=null,busy=false,ti;
+(async()=>{try{if(window.claude)sample=await claude.use('sample')}catch(e){}})();
+
+let AC=null,mute=false,mi=null,ms=0,score=0,T0=Date.now();const rev=new Set();
+function ac(){try{if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state=='suspended')AC.resume()}catch(e){}return AC}
+function tone(f,t,d,type='square',v=.05){const a=ac();if(!a||mute)return;const o=a.createOscillator(),n=a.createGain(),s=a.currentTime+t;o.type=type;o.frequency.value=f;n.gain.setValueAtTime(v,s);n.gain.exponentialRampToValueAtTime(.001,s+d);o.connect(n);n.connect(a.destination);o.start(s);o.stop(s+d)}
+function sfx(k){({step:()=>tone(180,0,.05,'square',.03),found:()=>[660,880,1320].forEach((f,i)=>tone(f,i*.07,.1)),talk:()=>[330,440].forEach((f,i)=>tone(f,i*.06,.08)),body:()=>[220,165,110].forEach((f,i)=>tone(f,i*.12,.18,'sawtooth')),good:()=>[523,659,784,1047].forEach((f,i)=>tone(f,i*.1,.16)),bad:()=>[200,150,100].forEach((f,i)=>tone(f,i*.14,.2,'sawtooth')),pts:()=>tone(1046,0,.09,'triangle')})[k]?.()}
+const BASS=[110,110,131,131,98,98,123,123],ARP=[440,523,659,523,392,494,587,494];
+function music(){clearInterval(mi);if(mute||!AC)return;mi=setInterval(()=>{tone(BASS[ms%8],0,.22,'triangle',.06);if(ms%2)tone(ARP[(ms>>1)%8],0,.1,'square',.015);ms++},280)}
+function addScore(n,q){score=Math.max(0,score+n);$('#sc').textContent='SCORE '+score;if(!q)sfx(n>0?'pts':'bad')}
+function say(t){clearInterval(ti);const m=$('#msg');m.textContent='';let i=0;ti=setInterval(()=>{m.textContent=t.slice(0,++i);if(i>=t.length)clearInterval(ti)},18)}
+function rect(c,x,y,w,h){g.fillStyle=c;g.fillRect(x,y,w,h)}
+function person(x,y,c){const px=x*16,py=y*16;rect('#000',px+4,py+14,8,2);rect('#f3c9a0',px+5,py+2,6,5);rect('#120a26',px+5,py+2,6,2);rect(c,px+4,py+7,8,6);rect('#120a26',px+5,py+13,2,2);rect('#120a26',px+9,py+13,2,2)}
+function draw(){
+for(let y=0;y<8;y++)for(let x=0;x<10;x++){
+const px=x*16,py=y*16,w=x==0||x==9||y==0||y==7;
+if(w){rect('#120a26',px,py,16,16);rect('#3b2a6e',px,py+7,16,1);rect('#3b2a6e',px+(y%2?4:10),py,1,7)}
+else{rect((x+y)%2?FL[0]:FL[1],px,py,16,16);if((x*7+y*3)%5==0)rect('#4a3590',px+7,py+7,2,2)}}
+rect('#ffb000',80,112,16,16);rect('#7a4a00',84,114,8,14);
+const cc=['#ff3ea5','#2de2e6','#ffb000','#6dff7a'];
+for(let x=1;x<=8;x++){const px=x*16,py=16;rect('#000',px+1,py+1,14,15);rect(cc[x%4],px+1,py,14,14);rect('#120a26',px+3,py+2,10,6);rect(cc[(x+1)%4],px+5,py+4,2,2);rect('#fff',px+4,py+10,2,2);rect('#fff',px+10,py+10,2,2)}
+EX.forEach(([x,y])=>{const px=x*16,py=y*16;rect('#000',px+1,py+3,14,13);rect('#8a5a2b',px+1,py+2,14,11);rect('#b57a3a',px+1,py+2,14,3)});rect('#c33',68,36,10,6);rect('#f3c9a0',64,35,5,5);rect('#fff',80,40,4,2);
+for(const k in C)if(!found[k]){const c=C[k],px=c.x*16+8,py=c.y*16+8,s=blink?4:3;rect('#2de2e6',px-s,py-1,s*2,2);rect('#2de2e6',px-1,py-s,2,s*2);rect('#fff',px-1,py-1,2,2)}
+for(const k in S)person(S[k].x,S[k].y,S[k].c);
+person(P.x,P.y,'#f3e9d2');rect('#7a4a00',P.x*16+4,P.y*16+1,8,2)}
+function objAt(x,y){if(x==4&&y==2)return['b'];for(const k in S)if(S[k].x==x&&S[k].y==y)return['s',k];for(const k in C)if(!found[k]&&C[k].x==x&&C[k].y==y)return['c',k]}
+function move(dx,dy){if(!$('#ov').hidden)return;const nx=P.x+dx,ny=P.y+dy,o=objAt(nx,ny);
+if(o){if(o[0]=='b'){sfx('body');say(CASE.body)}
+else if(o[0]=='s'){sfx('talk');talk(o[1])}
+else{found[o[1]]=1;addScore(100,1);sfx('found');$('#cl').textContent='CLUES '+Object.keys(found).length+'/5';say('FOUND: '+C[o[1]].n+'. '+C[o[1]].d)}}
+else if(!SOL.has(nx+','+ny)){P.x=nx;P.y=ny;sfx('step')}
+draw()}
+function openOv(h){const o=$('#ovi');o.innerHTML=h;$('#ov').hidden=false;return o}
+function closeOv(){$('#ov').hidden=true}
+function btn(t,fn,cls){const b=document.createElement('button');b.textContent=t;if(cls)b.className=cls;b.onclick=fn;return b}
+function notes(){const o=openOv('<h2>DETECTIVE NOTES</h2>');
+const ks=Object.keys(found);if(!ks.length)o.append(Object.assign(document.createElement('p'),{textContent:'Nothing yet. Walk onto the sparkles to search.',className:'dim'}));
+ks.forEach(k=>{const p=document.createElement('p');p.textContent=C[k].n+': '+C[k].d;o.append(p)});
+const h=document.createElement('h2');h.textContent='SUSPECTS';o.append(h);
+for(const k in S){const p=document.createElement('p');p.textContent=S[k].n+', '+S[k].role;p.style.color=S[k].c;o.append(p)}
+o.append(btn('CLOSE',closeOv,'x'))}
+function talk(id){H[id]=H[id]||[];const s=S[id],o=openOv('<h2></h2>');o.firstChild.textContent=s.n+', '+s.role;o.firstChild.style.color=s.c;
+const log=document.createElement('div');log.className='log';o.append(log);
+const add=(w,t)=>{const p=document.createElement('div');p.className=w;p.textContent=(w=='you'?'YOU: ':s.n.split(' ')[0].toUpperCase()+': ')+t;log.append(p);log.scrollTop=1e5;return p};
+if(!H[id].length)add('them','Make it quick, detective.');else H[id].forEach(m=>add(m.role=='user'?'you':'them',m.t));
+async function ask(label,kind,clue){if(busy)return;busy=true;add('you',label);H[id].push({role:'user',t:label});
+const w=add('them','...');let line;
+if(sample||window.AI_ENDPOINT){try{const hist=H[id].map(m=>(m.role=='user'?'Detective: ':s.n+': ')+m.t).join('\n');
+const pr='You play '+s.n+' in a retro-arcade murder mystery. Stay in character. Reply in 1-3 short sentences, no narration. Secret facts: '+s.facts+' Only reveal what the rules allow. Conversation so far:\n'+hist+'\nReply as '+s.n+' to the detective’s last line.';
+let txt;if(sample){txt=(await sample(pr,{cache:false})).text}else{const rs=await fetch(window.AI_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:pr})});txt=(await rs.json()).text}line=(txt||'').replace(new RegExp('^'+s.n+':\\s*'),'')}catch(e){line=null}}
+if(!line)line=clue?(s.hit[clue]||'I don’t know anything about that.'):(s[kind]||'Hm. Not sure what you mean.');
+w.textContent=s.n.split(' ')[0].toUpperCase()+': '+line;H[id].push({role:'a',t:line});if(clue&&s.hit[clue]&&!rev.has(id+clue)){rev.add(id+clue);addScore(50)}busy=false;log.scrollTop=1e5}
+o.append(btn('Where were you tonight?',()=>ask('Where were you tonight?','alibi')));
+o.append(btn('What did you think of Dex?',()=>ask('What did you think of Dex?','dex')));
+Object.keys(found).forEach(k=>o.append(btn('Show: '+C[k].n,()=>ask('Look at this: '+C[k].n,'',k))));
+if(sample||window.AI_ENDPOINT){const i=document.createElement('input');i.placeholder='Or ask anything...';i.maxLength=200;i.onkeydown=e=>{if(e.key=='Enter'&&i.value.trim()){const v=i.value.trim();i.value='';ask(v,'x')}};o.append(i)}
+o.append(btn('LEAVE',closeOv,'x'))}
+const acc={s:null,ev:new Set()};
+function accuse(){const o=openOv('<h2>WHO DID IT?</h2>');
+for(const k in S)o.append(btn(S[k].n,()=>{acc.s=k;accuse()},acc.s==k?'on':''));
+if(acc.s){const h=document.createElement('h2');h.textContent='PICK UP TO 2 PROOFS';o.append(h);
+Object.keys(found).forEach(k=>o.append(btn(C[k].n,()=>{acc.ev.has(k)?acc.ev.delete(k):acc.ev.size<2&&acc.ev.add(k);accuse()},acc.ev.has(k)?'on':'')));
+o.append(btn('ACCUSE '+S[acc.s].n.toUpperCase()+'!',verdict,'x'))}
+o.append(btn('BACK',closeOv,'x'))}
+function verdict(){
+if(acc.s!=CASE.killer)return end('WRONG PERSON','You accused '+S[acc.s].n+'. They are innocent. '+CASE.lose);
+if(CASE.proof.every(k=>acc.ev.has(k)))return end('CASE CLOSED!',CASE.win,1);
+closeOv();addScore(-50);say(S[CASE.killer].n+' smirks. "You have nothing solid." Find stronger proof: something that puts them at the scene, and a motive.');acc.ev.clear()}
+function end(t,d,win){clearInterval(mi);sfx(win?'good':'bad');let ex='';
+if(win){const s=Math.round((Date.now()-T0)/1000),tb=Math.max(0,300-(s>>1));score+=500+tb;ex='Solved in '+s+'s. Time bonus +'+tb+'. Case bonus +500.'}
+let best=0;try{const bk='ppm_'+CASE.title.slice(0,30);best=+localStorage.getItem(bk)||0;if(win&&score>best){best=score;localStorage.setItem(bk,best)}}catch(e){}
+const mx=maxScore(),rk=!win?'-':score>=mx*.8?'S':score>=mx*.6?'A':score>=mx*.4?'B':'C';
+const o=openOv('<h2></h2><p></p><p></p><h2></h2>'),q=o.querySelectorAll('h2,p');q[0].textContent=t;q[1].textContent=d;q[2].textContent=ex;q[3].textContent='SCORE '+score+'  RANK '+rk+'  BEST '+best;
+o.append(btn('PLAY AGAIN',()=>{useCase({meta:CASE,S,C});start()},'x'))}
+function startOld(){const o=openOv('<h2>PIXEL PALACE MURDER</h2><p>Midnight. Dex Harlow, owner of Pixel Palace Arcade, lies dead by the Galactic Gold cabinet. Three people were here tonight.</p><p class="dim">Walk onto sparkles to find clues. Walk into people to question them. Then accuse the killer.</p>');
+o.append(btn('START CASE',()=>{T0=Date.now();ac();music();closeOv();say('The arcade hums in the dark. Start by searching the floor.')},'x'))}
+document.querySelectorAll('#dp button').forEach(b=>b.onpointerdown=e=>{e.preventDefault();const[d,f]=b.dataset.d.split(',').map(Number);move(d,f)});
+cv.onpointerdown=e=>{const r=cv.getBoundingClientRect(),tx=(e.clientX-r.left)/r.width*10-.5-P.x,ty=(e.clientY-r.top)/r.height*8-.5-P.y;
+Math.abs(tx)>Math.abs(ty)?move(tx>0?1:-1,0):move(0,ty>0?1:-1)};
+addEventListener('keydown',e=>{const m={ArrowUp:[0,-1],w:[0,-1],ArrowDown:[0,1],s:[0,1],ArrowLeft:[-1,0],a:[-1,0],ArrowRight:[1,0],d:[1,0]}[e.key];if(m){e.preventDefault();move(...m)}});
+$('#bn').onclick=notes;$('#ba').onclick=accuse;
+$('#mu').onclick=()=>{mute=!mute;$('#mu').textContent=mute?'SND OFF':'SND ON';if(mute)clearInterval(mi);else{ac();music()}};
+setInterval(()=>{blink^=1;draw()},450);
+CASE=DEF;draw();start();
+</script>
+</body>
+</html>
